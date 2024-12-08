@@ -1,3 +1,5 @@
+// Implementación del autómata de Turing en lenguaje C
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -18,6 +20,65 @@ typedef struct{
     char accion;
     int estado;
 } ResultadoTupla;
+
+
+int evaluar_transicion(Transicion *table, int n, int m, int estado, char simbolo, ResultadoTupla *resultado);
+void imprimir_separador(int m);
+void imprimir_tabla_transiciones(Transicion *table, char simbolos[], int n, int m);
+void imprimir_maquina(Transicion *table, char simbolos[], int n, int m, int num_cadenas);
+void imprimir_cinta(Cinta cinta, int apuntador, int estado);
+int siguiente_paso_automata(Cinta cinta, int *apuntador, int *estado, Transicion *table, int n, int m);
+int ejecutar_maquina(char *cadena, Transicion *table, char simbolos[], int n, int m);
+
+
+int main() {
+    // Lectura de archivo
+    FILE *file = fopen("entrada.txt", "r");
+    if (file == NULL) {
+        printf("No se pudo abrir el archivo.\n");
+        return 1;
+    }
+
+    // Estados y Símbolos
+    int n, m;
+    fscanf(file, "%d %d", &n, &m);
+
+    // Alfabeto
+    char alfabeto[m + 1];  // consideramos también '\0'
+    for (int i = 0; i < m; i++) {
+        fscanf(file, " %c", &alfabeto[i]); 
+    }
+    alfabeto[m] = '\0';  // Terminar la cadena con un '\0'
+
+    // Transiciones
+    Transicion transiciones[n * m];
+    Transicion *temp;
+    for(int t = 0; t < n * m; t++){
+            temp = &transiciones[t];
+            fscanf(file, "%d %s %s %s %d", &temp->estado_actual, &temp->simbolo_entrada, &temp->simbolo_a_escribir, &temp->accion, &temp->nuevo_estado);
+            //printf("Transicion f(%d, %c) -> (%c, %c, %d)\n", temp->estado_actual, temp->simbolo_entrada, temp->simbolo_a_escribir, temp->accion, temp->nuevo_estado);
+    }
+
+    // Leer cadenas;
+    int num_cadenas;
+    fscanf(file, "%d", &num_cadenas);
+    char cadenas[num_cadenas][MAX_SIMBOLOS + 1];  // Se asume un máximo de MAX_SIMBOLOS caracteres por cadena
+    for (int i = 0; i < num_cadenas; i++) {
+        fscanf(file, "%s", cadenas[i]);
+    }
+
+    // Fin de la lectura
+    fclose(file);
+
+    // Ejecución de las cadenas en la máquina de Turing
+    printf("-----------------------------------------------------------------\n");
+    for(int i = 0; i < num_cadenas; i++){
+        printf("Cadena %d: %s \n", i+1, cadenas[i]);
+        ejecutar_maquina(cadenas[i], transiciones, alfabeto, n, m);
+    }
+    return 0;
+}
+
 
 int evaluar_transicion(Transicion *table, int n, int m, int estado, char simbolo, ResultadoTupla *resultado){
     int p = n * m;
@@ -89,7 +150,7 @@ void imprimir_maquina(Transicion *table, char simbolos[], int n, int m, int num_
     printf("Hay %d cadenas para probar\n", num_cadenas);
 }
 
-void imprimir_cinta(Cinta cinta, int apuntador){
+void imprimir_cinta(Cinta cinta, int apuntador, int estado){
     int i = 0;
     int fin = 0;
     while(i < MAX_SIMBOLOS + 1){
@@ -97,6 +158,7 @@ void imprimir_cinta(Cinta cinta, int apuntador){
         else printf("[ %c ]", cinta[i]);
         i++;
     }
+    printf(" Estado: %d", estado);
     printf("\n");
 
     for (int i = 0; i < apuntador; i++) {
@@ -126,6 +188,7 @@ int siguiente_paso_automata(Cinta cinta, int *apuntador, int *estado, Transicion
     }
 
     *estado = resultado.estado;
+    //imprimir_cinta(cinta, *apuntador, *estado);
     return 0;
 }
 
@@ -146,82 +209,30 @@ int ejecutar_maquina(char *cadena, Transicion *table, char simbolos[], int n, in
         mi_cinta[c] = cadena[c];
     }
     printf("La cinta con la cadena de entrada:\n");
-    //imprimir_cinta(mi_cinta, apuntador);
+    imprimir_cinta(mi_cinta, apuntador, estado);
     printf("\n");
-
+    int estado_anterior = estado;
+    char caracter_anterior = mi_cinta[apuntador];
     while(estado != -1){
+        /*
+        printf("El estado anterior es %d\n", estado_anterior);
+        printf("Caracter anterior: %c\n", caracter_anterior);
+        */
+        estado_anterior = estado;
+        caracter_anterior = mi_cinta[apuntador];
         if(siguiente_paso_automata(mi_cinta, &apuntador, &estado, table, n, m) != 0){
             printf("Error en la evaluacion de la transicion (%d, %c)\n", estado, mi_cinta[apuntador]);
             return -1;
         }
     }
     printf("Cinta final:\n");
-    //imprimir_cinta(mi_cinta, apuntador);
+    imprimir_cinta(mi_cinta, apuntador, estado);
 
-    if(mi_cinta[apuntador] == simbolos[0]){
-        printf("RECHAZADO\n");
+    if(estado_anterior != 0 || caracter_anterior != '-'){
+        printf("%s es RECHAZADO\n", cadena);
     }else{
-        printf("ACEPTADO\n");
+        printf("%s es ACEPTADO\n", cadena);
     }
-    printf("-------------------------------------\n");
-    return 0;
-}
-
-int main() {
-    FILE *file = fopen("entrada.txt", "r");
-    if (file == NULL) {
-        printf("No se pudo abrir el archivo.\n");
-        return 1;
-    }
-
-    int n, m;
-    
-    // Leer la cantidad de estados y símbolos
-    fscanf(file, "%d %d", &n, &m);
-
-
-    char alfabeto[m + 1];  // consideramos también '\0'
-    for (int i = 0; i < m; i++) {
-        fscanf(file, " %c", &alfabeto[i]); 
-    }
-    alfabeto[m] = '\0';  // Terminar la cadena con un '\0'
-
-
-    Transicion transiciones[n * m];
-    Transicion *temp;
-    for(int t = 0; t < n * m; t++){
-            temp = &transiciones[t];
-            fscanf(file, "%d %s %s %s %d", &temp->estado_actual, &temp->simbolo_entrada, &temp->simbolo_a_escribir, &temp->accion, &temp->nuevo_estado);
-            //printf("Transicion f(%d, %c) -> (%c, %c, %d)\n", temp->estado_actual, temp->simbolo_entrada, temp->simbolo_a_escribir, temp->accion, temp->nuevo_estado);
-    }
-
-
-    int num_cadenas;
-    fscanf(file, "%d", &num_cadenas);
-
-    imprimir_maquina(transiciones, alfabeto, n, m, num_cadenas);
-
-    // Leer las cadenas a revisar y almacenarlas
-    char cadenas[num_cadenas][MAX_SIMBOLOS + 1];  // Se asume un máximo de MAX_SIMBOLOS caracteres por cadena
-    for (int i = 0; i < num_cadenas; i++) {
-        fscanf(file, "%s", cadenas[i]);
-    }
-    fclose(file);
-
-    printf("-------------------------------------\n");
-    for(int i = 0; i < num_cadenas; i++){
-        printf("Cadena %d: %s \n", i+1, cadenas[i]);
-        ejecutar_maquina(cadenas[i], transiciones, alfabeto, n, m);
-    }
-
-    /*
-    // Imprimir las cadenas leídas
-    printf("\nCadenas a revisar:\n");
-    for (int i = 0; i < num_cadenas; i++) {
-        printf("%s\n", cadenas[i]);
-    }
-    */
-
-
+    printf("-----------------------------------------------------------------\n");
     return 0;
 }
