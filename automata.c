@@ -69,7 +69,7 @@ int main() {
 
     // Fin de la lectura
     fclose(file);
-
+    imprimir_maquina(transiciones, alfabeto, n, m, num_cadenas);
     // Ejecución de las cadenas en la máquina de Turing
     printf("-----------------------------------------------------------------\n");
     for(int i = 0; i < num_cadenas; i++){
@@ -221,7 +221,7 @@ int ejecutar_maquina(char *cadena, Transicion *table, char simbolos[], int n, in
         estado_anterior = estado;
         caracter_anterior = mi_cinta[apuntador];
         if(siguiente_paso_automata(mi_cinta, &apuntador, &estado, table, n, m) != 0){
-            printf("Error en la evaluacion de la transicion (%d, %c)\n", estado, mi_cinta[apuntador]);
+            printf("RECHAZADO: Error en la evaluacion de la transicion (%d, %c)\n", estado, mi_cinta[apuntador]);
             return -1;
         }
     }
